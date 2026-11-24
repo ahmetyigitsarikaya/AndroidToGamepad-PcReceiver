@@ -1,0 +1,86 @@
+﻿<ContentPage x:Class="androidtogamepad.MainPage">
+
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout
+                Padding="24,32"
+                Spacing="16"
+                VerticalOptions="Center">
+
+                <Label
+                    Text="PS3 → PC (USB / Wi-Fi)"
+                    Style="{StaticResource Headline}"
+                    HorizontalTextAlignment="Center" />
+
+                <Label
+                    x:Name="StatusLabel"
+                    Text="Bağlantı kapalı"
+                    Style="{StaticResource SubHeadline}"
+                    HorizontalTextAlignment="Center" />
+
+                <Entry
+                    x:Name="HostEntry"
+                    Placeholder="PC IP (USB için 127.0.0.1)"
+                    Keyboard="Default" />
+
+                <Entry
+                    x:Name="PortEntry"
+                    Placeholder="Port (28555)"
+                    Keyboard="Numeric" />
+
+                <Button
+                    Text="Bağlan"
+                    Clicked="OnConnectClicked"
+                    HorizontalOptions="Fill" />
+
+                <Button
+                    Text="Bağlantıyı Kes"
+                    Clicked="OnDisconnectClicked"
+                    HorizontalOptions="Fill" />
+
+                <Button
+                    x:Name="PinButton"
+                    Text="Ekranı Sabitle (PS/Home Engelle)"
+                    Clicked="OnPinClicked"
+                    HorizontalOptions="Fill" />
+
+                <Button
+                    Text="Oyun Modu (Ekranı Karart)"
+                    Clicked="OnEnterDimMode"
+                    HorizontalOptions="Fill" />
+
+                <Label
+                    x:Name="InputLabel"
+                    Text="Kol girdisi bekleniyor..."
+                    FontSize="12"
+                    HorizontalTextAlignment="Center" />
+
+                <Label
+                    Text="USB: telefonda USB hata ayıklamayı açın, PC'de PcReceiver klasöründeki baslat-usb.bat'ı çalıştırın, burada 127.0.0.1 ile bağlanın. Wi-Fi: PC'nin yerel IP'sini girin. Kol telefona Bluetooth ile bağlı kalır; uygulama ön planda veya Oyun Modunda kalmalıdır."
+                    FontSize="13"
+                    HorizontalTextAlignment="Center"
+                    Opacity="0.75" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Grid
+            x:Name="BlackoutOverlay"
+            IsVisible="False"
+            BackgroundColor="Black">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer
+                    NumberOfTapsRequired="2"
+                    Tapped="OnExitDimMode" />
+            </Grid.GestureRecognizers>
+
+            <Label
+                Text="Oyun Modu Aktif&#10;(Çıkmak için ekrana çift dokunun)"
+                TextColor="#33FFFFFF"
+                FontSize="14"
+                HorizontalTextAlignment="Center"
+                VerticalOptions="Center" />
+        </Grid>
+    </Grid>
+
+</ContentPage>

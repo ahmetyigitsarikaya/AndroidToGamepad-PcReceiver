@@ -1,0 +1,11 @@
+<Shell
+    x:Class="androidtogamepad.AppShell"
+    xmlns:local="clr-namespace:androidtogamepad"
+    Title="androidtogamepad">
+
+    <ShellContent
+        Title="Home"
+        ContentTemplate="{DataTemplate local:MainPage}"
+        Route="MainPage" />
+
+</Shell>

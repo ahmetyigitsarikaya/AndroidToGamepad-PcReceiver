@@ -1,0 +1,78 @@
+## .NET / Visual Studio / MAUI / WPF
+
+# Derleme çıktıları
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Pp]ublish/
+[Aa]rtifacts/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio önbellek ve kullanıcı dosyaları
+.vs/
+.vsconfig
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.rsuser
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+
+# JetBrains Rider & VS Code
+.idea/
+*.DotSettings.user
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# NuGet & Paket Yöneticisi
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Android / MAUI Paketleri & İmza Anahtarları (Hassas dosyalar)
+*.apk
+*.aab
+*.apks
+*.dex
+*.keystore
+*.jks
+*.mobileprovision
+
+# Test Sonuçları & Çökmeler
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+*.dmp
+*.log
+
+# İşletim Sistemi Dosyaları
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+*.tmp
+*.bak
+*~
