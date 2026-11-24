@@ -1,6 +1,6 @@
 ## .NET / Visual Studio / MAUI / WPF
 
-# Derleme çıktıları
+# Build outputs
 [Bb]in/
 [Oo]bj/
 [Oo]ut/
@@ -10,7 +10,7 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
-# Visual Studio önbellek ve kullanıcı dosyaları
+# Visual Studio cache & user-specific files
 .vs/
 .vsconfig
 *.suo
@@ -34,7 +34,7 @@ bld/
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# NuGet & Paket Yöneticisi
+# NuGet & Package Manager
 *.nupkg
 *.snupkg
 **/[Pp]ackages/*
@@ -45,7 +45,7 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
-# Android / MAUI Paketleri & İmza Anahtarları (Hassas dosyalar)
+# Android / MAUI packages & signing secrets
 *.apk
 *.aab
 *.apks
@@ -54,7 +54,7 @@ artifacts/
 *.jks
 *.mobileprovision
 
-# Test Sonuçları & Çökmeler
+# Test results & crash dumps
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 *.trx
@@ -63,7 +63,7 @@ artifacts/
 *.dmp
 *.log
 
-# İşletim Sistemi Dosyaları
+# OS-generated files
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db

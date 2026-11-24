@@ -2,7 +2,7 @@
 
 # 🎮 AndroidToGamepad
 
-### DualShock 3 / Android Gamepad → Sanal Xbox 360 Kontrolcüsü Köprüsü
+### DualShock 3 / Android Gamepad → Virtual Xbox 360 Controller Bridge
 
 [![.NET](https://img.shields.io/badge/.NET-11.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Android MAUI](https://img.shields.io/badge/Android-.NET%20MAUI-3DDC84?style=for-the-badge&logo=android&logoColor=black)](androidtogamepad/androidtogamepad/androidtogamepad.csproj)
@@ -12,60 +12,60 @@
 
 <br />
 
-**Android telefonunuza Bluetooth (veya USB) ile bağlı bir PS3 DualShock 3 kolunun tüm tuş ve analog girdilerini, root gerektirmeden USB (`adb reverse`) veya Wi-Fi üzerinden Windows bilgisayarınıza aktarıp gerçek bir XInput (Xbox 360) oyun kumandası olarak çalıştıran açık kaynaklı düşük gecikmeli köprü.**
+**An open-source, ultra-low-latency bridge that forwards all button and analog inputs from a PS3 DualShock 3 (or any Android-compatible gamepad) paired to your Android phone over USB (`adb reverse`) or Wi-Fi to Windows, emulating a native XInput Xbox 360 controller with zero root access required.**
 
 <br />
 
-[✨ Özellikler](#ozellikler) •
-[🏗️ Mimari](#mimari) •
-[🚀 Kurulum](#kurulum) •
-[🕹️ Kullanım](#kullanim) •
-[📡 Ağ Protokolü](#protokol) •
-[🎮 Tuş Haritalama](#haritalama) •
-[🛠️ Sorun Giderme](#sorun-giderme)
+[✨ Features](#features) •
+[🏗️ Architecture](#architecture) •
+[🚀 Setup](#setup) •
+[🕹️ Usage](#usage) •
+[📡 Wire Protocol](#protocol) •
+[🎮 Input Mapping](#mapping) •
+[🛠️ Troubleshooting](#troubleshooting)
 
 </div>
 
 ---
 
-## 🎯 Neden Bu Proje?
+## 🎯 Why This Project?
 
-Windows üzerinde **DualShock 3** veya standart Android uyumlu oyun kollarını doğrudan **XInput** (Xbox 360) olarak kullanmak her zaman kolay değildir. Telefonun Bluetooth üzerinden doğrudan PC'ye HID Device gibi tanıtılması ise root'suz Android cihazlarda sistemin aynı anda hem **HID Host** (kolu dinleme) hem **HID Device** (PC'ye kol olma) rolünü yürütememesi ve `BluetoothHidDevice` API'sinde Microsoft VID/PID yazılamaması nedeniyle kısıtlıdır.
+Using a **DualShock 3** or Android-paired controller seamlessly as a native **XInput (Xbox 360)** pad on Windows can be tricky without dedicated hardware dongles or kernel workarounds. On non-root Android phones, acting directly as a Bluetooth HID Device proxy while simultaneously reading a Bluetooth controller fails at the OS stack level (Android cannot host both HID Host and HID Device roles reliably on the same Bluetooth stack, nor can it override Microsoft's Xbox VID/PID in SDP records).
 
-**AndroidToGamepad** bu engeli temiz bir iki parçalı mimariyle çözer:
-1. **Android Uygulaması (`.NET MAUI`)**: DualShock 3'ü telefon üzerinden normal şekilde dinler, telefon arayüzüne sızan tüm kol olaylarını yutar ve **14 baytlık** ultra hafif paketleri `TCP_NODELAY` ile PC'ye aktarır.
-2. **PC Alıcısı (`WPF` + `ViGEmBus`)**: Gelen paketleri anlık olarak **sanal bir Xbox 360 kontrolcüsüne** dönüştürür ve koyu temalı **60 FPS canlı görselleştirici** üzerinde gösterir. Böylece yalnızca XInput destekleyen oyunlar bile kolu yerel bir Xbox 360 kontrolcüsü olarak algılar.
+**AndroidToGamepad** solves this cleanly with a two-part architecture:
+1. **Android Bridge App (`.NET MAUI`)**: Listens to the DualShock 3 paired to the phone, swallows every gamepad event so it never leaks into the Android UI, and streams compact **14-byte** packets over `TCP_NODELAY` (`NoDelay = true`).
+2. **PC Receiver (`WPF` + `ViGEmBus`)**: Receives packets on a dedicated background thread, feeds a virtual **Xbox 360 controller** via ViGEmBus, and renders a sleek dark-themed **60 FPS live controller visualizer** so even XInput-only PC games detect it natively.
 
 ---
 
-<a id="ozellikler"></a>
+<a id="features"></a>
 
-## ✨ Özellikler
+## ✨ Features
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 📱 Android Köprü Uygulaması
-- **Tak-Çalıştır Girdi Yakalama:** Bluetooth veya USB ile Android'e bağlı `Gamepad` / `Joystick` kaynaklı tüm tuş ve analog olaylarını okur.
-- **Sıfır Telefon Etkileşimi:** Koldan gelen tüm `KeyEvent` ve `MotionEvent` olaylarını tüketir (`return true`); kol tuşları telefon menüsünde odak kaydırmaz veya Geri işlemini tetiklemez.
-- **Ekran Sabitleme (`LockTask`):** Android sisteminin `PS / Home` tuşuna basıldığında ana ekrana atmasını engellemek için tek dokunuşla ekran sabitleme desteği sunar.
-- **OLED Oyun Modu:** Ekranı `%1` parlaklığa çekip simsiyah bir OLED katmanıyla kapatır (çıkmak için ekrana çift dokunun). Böylece pil tasarrufu sağlarken analog eksen akışını korur.
-- **Arka Plan Dayanıklılığı:** `ForegroundService` (`TypeDataSync`) + `PartialWakeLock` + kalıcı bildirim (**Durdur** aksiyonlu) ile TCP bağlantısını canlı tutar.
-- **Otomatik Yeniden Bağlanma:** Kopma durumunda her `1` saniyede bir yeniden bağlanır ve `NoDelay = true` ile en güncel durumu gecikmesiz gönderir.
+### 📱 Android Bridge App
+- **Plug-and-Play Input Capture:** Reads `Gamepad` and `Joystick` `KeyEvent` / `MotionEvent` streams from Bluetooth or USB controllers connected to Android.
+- **Zero Phone Interference:** Consumes **all** events originating from gamepad devices (`return true`) so button presses never move UI focus, click buttons, or trigger Back navigation.
+- **Screen Pinning (`LockTask`):** Includes a one-tap toggle (`Ekranı Sabitle`) to engage Android Screen Pinning and block OS-level `PS / Home` button interception.
+- **OLED Game Mode:** Dims brightness to `1%` with a pure-black overlay (`Oyun Modu`; double-tap to exit) to preserve battery while keeping the app focused for analog stick input.
+- **Background Resilience:** Runs a `ForegroundService` (`TypeDataSync`) with `PartialWakeLock` and a persistent notification (**Stop / Durdur** action) to keep the TCP bridge alive.
+- **Auto-Reconnect:** Automatically retries every `1` second on disconnect while keeping UI threads completely non-blocking.
 
 </td>
 <td width="50%" valign="top">
 
-### 🖥️ PC Receiver (WPF Masaüstü)
-- **Modern Koyu Arayüz:** Özel `WindowChrome` başlık çubuğu, OLED/Xbox koyu tema paleti (`#0D1117` / `#161B22`) ve zümrüt yeşili (`#22C55E`) durum göstergeleri.
-- **60 FPS Canlı Kontrolcü Önizleme:** Sol/sağ analog hareketleri, `L3/R3` tıklama halkaları, `LT/RT` analog doluluk barları (`%`), `LB/RB`, 4 yönlü D-Pad, `View/Guide/Menu` ve renkli `A/B/X/Y` tuşları gerçek zamanlı animasyonla izlenir.
-- **Gerçek XInput Çıkışı (`ViGEmBus`):** `Nefarius.ViGEm.Client` üzerinden `AutoSubmitReport = false` + anlık `SubmitReport()` ile sanal Xbox 360 kolu oluşturur.
-- **Tek Tıkla Araçlar:**
-  - **USB (ADB) Bağla:** Uygulama içinden `adb reverse tcp:<port> tcp:<port>` tünelini tek tıkla kurar.
-  - **joy.cpl Aç:** Windows Oyun Denetleyicileri test aracını doğrudan açar.
-  - **Kopyalanabilir IP Etiketleri:** `127.0.0.1` ve yerel Wi-Fi IPv4 adreslerini tek tıkla panoya kopyalar.
-- **Canlı Telemetri & Olay Günlüğü:** Anlık paket hızı (`Hz`), toplam paket sayacı, normalize analog eksen değerleri ve zaman damgalı log ekranı.
+### 🖥️ PC Receiver (WPF Desktop)
+- **Modern Dark Studio UI:** Custom `WindowChrome` title bar, OLED/Xbox dark palette (`#0D1117` / `#161B22`), and emerald (`#22C55E`) status indicators.
+- **60 FPS Live Controller Visualizer:** Real-time visualization of thumbstick movement (`LX/LY`, `RX/RY`), `L3/R3` click rings, `LT/RT` trigger bars (`%`), `LB/RB` bumpers, 4-way D-Pad, `View/Guide/Menu`, and colored `A/B/X/Y` buttons.
+- **Native XInput Output (`ViGEmBus`):** Drives a virtual Xbox 360 gamepad via `Nefarius.ViGEm.Client` (`AutoSubmitReport = false` → immediate `SubmitReport()`).
+- **One-Click Utilities:**
+  - **USB (ADB) Tunnel (`USB (ADB) Bağla`):** Runs `adb reverse tcp:<port> tcp:<port>` directly from the UI.
+  - **Quick `joy.cpl` Launch (`joy.cpl Aç`):** Opens Windows Game Controllers tester directly.
+  - **Clickable IP Pills:** Copy `127.0.0.1` or local Wi-Fi IPv4 addresses to clipboard in one click.
+- **Live Telemetry & Event Log:** Displays real-time packet rate (`Hz`), total packet count, normalized stick coordinates, and timestamped connection logs.
 
 </td>
 </tr>
@@ -73,24 +73,24 @@ Windows üzerinde **DualShock 3** veya standart Android uyumlu oyun kollarını 
 
 ---
 
-<a id="mimari"></a>
+<a id="architecture"></a>
 
-## 🏗️ Mimari ve Çalışma Mantığı
+## 🏗️ Architecture & How It Works
 
 ```mermaid
 flowchart LR
-    DS3["🎮 DualShock 3 / Gamepad"] -->|"Bluetooth (HID Host)"| AND["📱 Android Uygulaması<br/>.NET MAUI (net11.0-android)"]
-    AND -->|"14 Byte XUSB Paket<br/>USB (adb reverse) veya Wi-Fi TCP :28555"| PC["🖥️ PcReceiver<br/>WPF Desktop (net11.0-windows)"]
-    PC -->|"Nefarius.ViGEm.Client"| VIGEM["⚙️ ViGEmBus Sürücüsü"]
-    VIGEM -->|"Yerel XInput (Xbox 360)"| GAME["🕹️ Windows Oyunları & joy.cpl"]
+    DS3["🎮 DualShock 3 / Gamepad"] -->|"Bluetooth (HID Host)"| AND["📱 Android App<br/>.NET MAUI (net11.0-android)"]
+    AND -->|"14-Byte XUSB Frame<br/>USB (adb reverse) or Wi-Fi TCP :28555"| PC["🖥️ PcReceiver<br/>WPF Desktop (net11.0-windows)"]
+    PC -->|"Nefarius.ViGEm.Client"| VIGEM["⚙️ ViGEmBus Driver"]
+    VIGEM -->|"Native XInput (Xbox 360)"| GAME["🕹️ Windows Games & joy.cpl"]
 ```
 
 > [!IMPORTANT]
-> **Android Analog Eksen Kısıtlaması Hakkında:** Root yetkisi olmayan Android cihazlarda işletim sistemi analog çubuk ve tetik (`MotionEvent`) verilerini yalnızca **ekrandaki odaklı (ön plan) aktiviteye** gönderir. Arka plan servisi (`GamepadBridgeService`) TCP bağlantısını açık tutsa da oyun sırasında uygulamanın ekranda kalması gerekir. Bu nedenle telefonunuzun ekranını korumak ve pil tüketimini en aza indirmek için uygulamadaki **Oyun Modu (Ekranı Karart)** özelliğini kullanmanız önerilir.
+> **Android Analog Axis Limitation:** On non-root Android devices, the OS only dispatches `MotionEvent` data (analog sticks and triggers) to the **currently focused foreground Activity**. While the Foreground Service (`GamepadBridgeService`) keeps the TCP link alive in the background, the app should stay on screen during gameplay. Use the built-in **Oyun Modu (Game Mode)** to turn OLED pixels completely off at `1%` brightness while keeping analog axes streaming.
 
 ---
 
-## 📁 Proje Yapısı
+## 📁 Project Structure
 
 ```text
 androidtogamepad/
@@ -100,125 +100,127 @@ androidtogamepad/
 ├── LICENSE
 ├── README.md
 │
-├── PcReceiver/                              # Windows WPF alıcı uygulaması (net11.0-windows)
+├── PcReceiver/                              # Windows WPF receiver (net11.0-windows)
 │   ├── Models/
-│   │   └── GamepadSnapshot.cs               # 14 baytlık paket snapshot modeli & XUSB bayrakları
+│   │   └── GamepadSnapshot.cs               # Immutable 14-byte snapshot & XUSB button flags
 │   ├── Services/
-│   │   └── ReceiverEngine.cs                # Asenkron TCP sunucusu, ViGEm kontrolcüsü & ADB tüneli
-│   ├── App.xaml / App.xaml.cs               # Koyu tema fırçaları ve özel kontrol stilleri
-│   ├── MainWindow.xaml / MainWindow.xaml.cs # 60 FPS canlı Xbox 360 görselleştirici & telemetri
-│   ├── PcReceiver.csproj                    # WPF proje dosyası (Nefarius.ViGEm.Client 1.21.256)
-│   ├── baslat-usb.bat                       # ADB reverse + Release başlatıcı
-│   └── baslat-wifi.bat                      # Wi-Fi modu için Release başlatıcı
+│   │   └── ReceiverEngine.cs                # Async TCP server, ViGEm controller & ADB helper
+│   ├── App.xaml / App.xaml.cs               # Dark theme brushes & custom WPF control templates
+│   ├── MainWindow.xaml / MainWindow.xaml.cs # 60 FPS live Xbox 360 visualizer & telemetry
+│   ├── PcReceiver.csproj                    # WPF project (Nefarius.ViGEm.Client 1.21.256)
+│   ├── baslat-usb.bat                       # Runs adb reverse + launches Release build
+│   └── baslat-wifi.bat                      # Launches Release build for Wi-Fi mode
 │
-└── androidtogamepad/                        # .NET MAUI çözümü
+└── androidtogamepad/                        # .NET MAUI solution
     ├── androidtogamepad.slnx
     └── androidtogamepad/
         ├── Platforms/Android/
         │   ├── Hid/
-        │   │   ├── XboxButton.cs            # XInput (XUSB) buton bitmask enum'ı
-        │   │   └── XboxGamepadState.cs      # Normalizasyon ve 14 baytlık ToPacket() serileştirici
+        │   │   ├── XboxButton.cs            # XInput (XUSB) button bitmask enum
+        │   │   └── XboxGamepadState.cs      # Axis normalization & 14-byte ToPacket() encoder
         │   ├── Input/
-        │   │   └── Ps3InputMapper.cs        # KeyEvent/MotionEvent → Xbox eşleme & deadzone
+        │   │   └── Ps3InputMapper.cs        # KeyEvent/MotionEvent → Xbox mapping & deadzones
         │   ├── Net/
-        │   │   └── PcLink.cs                # NoDelay TCP istemcisi & otomatik yeniden bağlanma
+        │   │   └── PcLink.cs                # NoDelay TCP worker & automatic 1s reconnect loop
         │   ├── Services/
-        │   │   └── GamepadBridgeService.cs  # Foreground Service + WakeLock + Bildirim kontrolü
-        │   ├── AndroidManifest.xml          # Ağ, Foreground Service, WakeLock & Bildirim izinleri
-        │   └── MainActivity.cs              # Girdi yakalama/yutma, LockTask & parlaklık kontrolü
-        ├── MainPage.xaml / MainPage.xaml.cs # Bağlantı, Sabitleme, Oyun Modu & canlı hex paket UI
-        └── androidtogamepad.csproj          # .NET 11 MAUI projesi (Android API 24+)
+        │   │   └── GamepadBridgeService.cs  # Foreground Service + PartialWakeLock + Notification
+        │   ├── AndroidManifest.xml          # Network, Foreground Service, WakeLock & Notification perms
+        │   └── MainActivity.cs              # Input capture/swallowing, LockTask & brightness control
+        ├── MainPage.xaml / MainPage.xaml.cs # Connection UI, Screen Pinning, Game Mode & hex debug
+        └── androidtogamepad.csproj          # .NET 11 MAUI project (Android API 24+)
 ```
 
 ---
 
-<a id="kurulum"></a>
+<a id="setup"></a>
 
-## 🚀 Kurulum
+## 🚀 Setup
 
-### 1. Gereksinimler
+### 1. Prerequisites
 
-| Bileşen | Gereken Sürüm / Araç | Açıklama |
+| Component | Requirement | Notes |
 |---|---|---|
-| **.NET SDK** | `.NET 11 SDK` (`11.0.100+`) | Hem `PcReceiver` hem de MAUI uygulaması için |
-| **MAUI İş Yükü** | `dotnet workload install maui-android` | Android APK derlemesi için |
-| **ViGEmBus Sürücüsü** | [ViGEmBus Releases](https://github.com/nefarius/ViGEmBus/releases) | Windows'ta sanal Xbox 360 kontrolcüsü oluşturmak için **zorunlu** |
-| **Android Platform Tools** *(USB için)* | `adb` (`PATH`'e ekli) | USB üzerinden düşük gecikmeli `adb reverse` tüneli için |
-| **Android Cihaz** | Android `7.0` (`API 24`) ve üzeri | Ön plan servisi/bildirim özellikleri Android 8+/13+ ile tam uyumludur |
+| **.NET SDK** | `.NET 11 SDK` (`11.0.100+`) | Required for both `PcReceiver` and the MAUI app |
+| **MAUI Workload** | `dotnet workload install maui-android` | Required to build/deploy the Android APK |
+| **ViGEmBus Driver** | [ViGEmBus Releases](https://github.com/nefarius/ViGEmBus/releases) | **Required** on Windows to create virtual Xbox 360 controllers |
+| **Android Platform Tools** *(USB only)* | `adb` in `PATH` | Used for low-latency USB tunneling via `adb reverse` |
+| **Android Device** | Android `7.0` (`API 24`) or newer | Foreground service & notification features target API 26+/33+ |
 
-### 2. PC Alıcısını (`PcReceiver`) Çalıştırma
+### 2. Running the PC Receiver (`PcReceiver`)
 
-Önce [ViGEmBus Releases](https://github.com/nefarius/ViGEmBus/releases) sayfasından **ViGEmBus** sürücüsünü bilgisayarınıza kurun. Ardından:
+First, install **ViGEmBus** from [ViGEmBus Releases](https://github.com/nefarius/ViGEmBus/releases). Then launch `PcReceiver`:
 
 ```powershell
-# Projeyi doğrudan Release modunda derleyip başlatmak için:
+# Build and launch the WPF receiver in Release mode:
 dotnet run --project PcReceiver\PcReceiver.csproj -c Release
 ```
 
-Veya hazır başlatıcıları kullanabilirsiniz:
-- **USB Modu:** [PcReceiver/baslat-usb.bat](PcReceiver/baslat-usb.bat) *(önce `adb reverse tcp:28555 tcp:28555` çalıştırır, ardından uygulamayı açar)*
-- **Wi-Fi Modu:** [PcReceiver/baslat-wifi.bat](PcReceiver/baslat-wifi.bat)
+Or use the included quick-launch scripts:
+- **USB Mode:** [PcReceiver/baslat-usb.bat](PcReceiver/baslat-usb.bat) *(runs `adb reverse tcp:28555 tcp:28555` and starts the app)*
+- **Wi-Fi Mode:** [PcReceiver/baslat-wifi.bat](PcReceiver/baslat-wifi.bat)
 
-### 3. Android Uygulamasını Derleme ve Yükleme
+### 3. Building & Installing the Android App
 
 ```powershell
-# Android workload kurulu değilse:
+# Install the MAUI Android workload if not already installed:
 dotnet workload install maui-android
 
-# Release APK derleme ve bağlı cihaza kurma (USB hata ayıklama açıkken):
+# Build and install Release APK to a USB-connected Android device:
 dotnet build androidtogamepad\androidtogamepad\androidtogamepad.csproj -f net11.0-android -c Release -t:Install
 ```
 
 > [!TIP]
-> Visual Studio 2026 / 2022 kullanıyorsanız `androidtogamepad\androidtogamepad.slnx` çözümünü açıp hedef cihaz olarak Android telefonunuzu seçerek de doğrudan dağıtabilirsiniz.
+> You can also open `androidtogamepad\androidtogamepad.slnx` in Visual Studio 2026 / 2022, select your Android device as the target, and deploy directly.
 
 ---
 
-<a id="kullanim"></a>
+<a id="usage"></a>
 
-## 🕹️ Kullanım
+## 🕹️ Usage
 
-### Senaryo A: USB Kablo ile En Düşük Gecikme (`adb reverse`)
+> *Note: The in-app UI labels are currently in Turkish (`Bağlan` = Connect, `Bağlantıyı Kes` = Disconnect, `Ekranı Sabitle` = Pin Screen, `Oyun Modu` = Game Mode, `USB (ADB) Bağla` = Setup USB ADB, `joy.cpl Aç` = Open joy.cpl).*
 
-1. Telefonda **USB Hata Ayıklama**yı açın (*Ayarlar → Telefon hakkında → Yapı numarasına 7 kez dokunun → Geliştirici seçenekleri → USB hata ayıklama*).
-2. Telefonu USB kablosuyla PC'ye bağlayın ve ekranda çıkan RSA hata ayıklama onayını kabul edin.
-3. DualShock 3 (veya Android uyumlu kolunuzu) telefonunuza Bluetooth ile bağlayın.
-4. PC'de **PcReceiver**'ı açın ve **"USB (ADB) Bağla"** butonuna basın *(veya `baslat-usb.bat` ile açın)*.
-5. Telefondaki uygulamada IP alanına `127.0.0.1`, Port alanına `28555` yazıp **Bağlan**'a dokunun.
-6. Telefon arayüzünde **Ekranı Sabitle (PS/Home Engelle)** ve ardından **Oyun Modu (Ekranı Karart)** butonlarına basarak konforlu şekilde oynamaya başlayın.
-7. PC uygulamasındaki **"joy.cpl Aç"** butonuyla tüm tuş ve eksenleri doğrulayın.
+### Option A: USB Cable via `adb reverse` (Lowest Latency)
 
-### Senaryo B: Kablosuz Wi-Fi Üzerinden
+1. Enable **USB Debugging** on your Android phone (*Settings → About phone → Tap Build number 7 times → Developer options → USB debugging*).
+2. Connect the phone to your PC via USB and accept the RSA debugging prompt.
+3. Pair/connect your DualShock 3 (or compatible gamepad) to the phone over Bluetooth.
+4. Launch **PcReceiver** on Windows and click **`USB (ADB) Bağla`** *(or start via `baslat-usb.bat`)*.
+5. In the Android app, enter `127.0.0.1` and port `28555`, then tap **`Bağlan`** (Connect).
+6. Tap **`Ekranı Sabitle (PS/Home Engelle)`** to lock out the Home button, and **`Oyun Modu (Ekranı Karart)`** to black out the screen while playing.
+7. Click **`joy.cpl Aç`** on PC to verify all buttons, triggers, and thumbsticks in Windows Game Controllers.
 
-1. Telefon ve PC'nin **aynı yerel ağda (Wi-Fi)** olduğundan emin olun.
-2. PC'de **PcReceiver**'ı açın ve **"Bağlantı Adresleri"** kartında listelenen `Wi-Fi: 192.168.x.x` adresine bakın.
-3. Telefondaki uygulamada bu yerel IP adresini ve `28555` portunu girerek **Bağlan**'a dokunun.
-4. Windows Güvenlik Duvarı uyarı verirse yerel ağ erişimine izin verin.
+### Option B: Wireless over Wi-Fi
+
+1. Ensure both your phone and Windows PC are on the **same local Wi-Fi network**.
+2. Launch **PcReceiver** and check the **`Bağlantı Adresleri`** card for your PC's local IPv4 address (`Wi-Fi: 192.168.x.x`).
+3. Enter that IP address and port `28555` in the Android app and tap **`Bağlan`**.
+4. Allow TCP port `28555` through Windows Defender Firewall if prompted.
 
 ---
 
-<a id="protokol"></a>
+<a id="protocol"></a>
 
-## 📡 14 Baytlık TCP Protokolü
+## 📡 14-Byte TCP Wire Protocol
 
-Telefon ve PC arasındaki veri aktarımı `Little-Endian` düzeninde sabit **14 baytlık** ikili çerçevelerle yapılır (`XboxGamepadState.ToPacket()` → `ReceiverEngine.AcceptLoopAsync()`):
+Controller state is serialized as fixed **14-byte little-endian** frames (`XboxGamepadState.ToPacket()` → `ReceiverEngine.AcceptLoopAsync()`):
 
-| Bayt Aralığı | Veri Tipi | Alan | Değer Aralığı ve Açıklama |
+| Byte Offset | Type | Field | Range & Description |
 | :---: | :---: | :--- | :--- |
-| `0` | `byte` | **Magic** | Sabit paket başlığı `0xA5` |
-| `1` | `byte` | **Version** | Protokol sürümü `0x01` |
-| `2..3` | `ushort` *(LE)* | **Buttons** | XUSB bitmask bayrakları (`XboxButton`) |
-| `4` | `byte` | **LT** | Sol tetik `0..255` (`L2` analog veya dijital yedek `255`) |
-| `5` | `byte` | **RT** | Sağ tetik `0..255` (`R2` analog veya dijital yedek `255`) |
-| `6..7` | `short` *(LE)* | **LX** | Sol analog X (`-32768..32767`) |
-| `8..9` | `short` *(LE)* | **LY** | Sol analog Y (`-32768..32767`, yukarı pozitif; Android Y ekseni terslenir) |
-| `10..11` | `short` *(LE)* | **RX** | Sağ analog X (`-32768..32767`) |
-| `12..13` | `short` *(LE)* | **RY** | Sağ analog Y (`-32768..32767`, yukarı pozitif; Android Y ekseni terslenir) |
+| `0` | `byte` | **Magic** | Fixed header byte `0xA5` |
+| `1` | `byte` | **Version** | Protocol version `0x01` |
+| `2..3` | `ushort` *(LE)* | **Buttons** | XUSB bitmask flags (`XboxButton`) |
+| `4` | `byte` | **LT** | Left trigger `0..255` (`L2` analog or `255` digital fallback) |
+| `5` | `byte` | **RT** | Right trigger `0..255` (`R2` analog or `255` digital fallback) |
+| `6..7` | `short` *(LE)* | **LX** | Left stick X (`-32768..32767`) |
+| `8..9` | `short` *(LE)* | **LY** | Left stick Y (`-32768..32767`, up is positive — inverted from Android Y) |
+| `10..11` | `short` *(LE)* | **RX** | Right stick X (`-32768..32767`) |
+| `12..13` | `short` *(LE)* | **RY** | Right stick Y (`-32768..32767`, up is positive — inverted from Android Y) |
 
 <details>
-<summary><b>XUSB Buton Bitmask Değerleri (Bayt 2..3)</b></summary>
+<summary><b>XUSB Button Bitmask Flags (Bytes 2..3)</b></summary>
 
-| Bitmask (`Hex`) | XUSB / `XboxButton` Adı |
+| Bitmask (`Hex`) | XUSB / `XboxButton` Flag |
 | :---: | :--- |
 | `0x0001` | `DpadUp` |
 | `0x0002` | `DpadDown` |
@@ -240,72 +242,72 @@ Telefon ve PC arasındaki veri aktarımı `Little-Endian` düzeninde sabit **14 
 
 ---
 
-<a id="haritalama"></a>
+<a id="mapping"></a>
 
-## 🎮 PS3 → Xbox 360 Girdi Haritalama
+## 🎮 PS3 → Xbox 360 Input Mapping
 
-`Ps3InputMapper` sınıfı yalnızca `InputSourceType.Gamepad` veya `InputSourceType.Joystick` kaynaklı cihazlardan gelen olayları işler ve cihazın kendi `Flat` ölü bölgesini (minimum `0.05`) otomatik uygular:
+`Ps3InputMapper` filters strictly for devices exposing `InputSourceType.Gamepad` or `InputSourceType.Joystick` and applies per-axis `MotionRange.Flat` deadzones (minimum `0.05`):
 
-| DualShock 3 / Android Girdisi | Android `Keycode` / `Axis` | Xbox 360 Hedefi |
+| DualShock 3 / Android Input | Android `Keycode` / `Axis` | Xbox 360 Target |
 | :--- | :--- | :--- |
 | **✕ (Cross)** | `Keycode.ButtonA` | **A** |
 | **◯ (Circle)** | `Keycode.ButtonB` | **B** |
 | **□ (Square)** | `Keycode.ButtonX` | **X** |
 | **△ (Triangle)** | `Keycode.ButtonY` | **Y** |
 | **L1 / R1** | `Keycode.ButtonL1` / `ButtonR1` | **LB / RB** |
-| **L2 / R2** | `Axis.Ltrigger` (`Brake`) / `Rtrigger` (`Gas`) *(veya dijital `ButtonL2`/`R2`)* | **LT / RT** (`0–255`) |
+| **L2 / R2** | `Axis.Ltrigger` (`Brake`) / `Rtrigger` (`Gas`) *(or digital `ButtonL2`/`R2`)* | **LT / RT** (`0–255`) |
 | **L3 / R3** | `Keycode.ButtonThumbl` / `ButtonThumbr` | **LS / RS** |
 | **Select / Start** | `Keycode.ButtonSelect` (`Back`) / `Keycode.ButtonStart` | **View / Menu** |
-| **PS Tuşu** | `Keycode.ButtonMode` / `Keycode.Home` | **Xbox Guide** |
-| **D-Pad** | `Keycode.Dpad*` veya `Axis.HatX` / `HatY` | **D-Pad (8 Yön)** |
-| **Sol Analog** | `Axis.X` / `Axis.Y` | **Left Thumb (X / Y)** |
-| **Sağ Analog** | `Axis.Z` / `Axis.Rz` *(yoksa `Axis.Rx` / `Axis.Ry`)* | **Right Thumb (X / Y)** |
+| **PS Button** | `Keycode.ButtonMode` / `Keycode.Home` | **Xbox Guide** |
+| **D-Pad** | `Keycode.Dpad*` or `Axis.HatX` / `HatY` | **D-Pad (8-Way)** |
+| **Left Stick** | `Axis.X` / `Axis.Y` | **Left Thumb (X / Y)** |
+| **Right Stick** | `Axis.Z` / `Axis.Rz` *(falls back to `Axis.Rx` / `Axis.Ry`)* | **Right Thumb (X / Y)** |
 
 ---
 
-<a id="sorun-giderme"></a>
+<a id="troubleshooting"></a>
 
-## 🛠️ Sorun Giderme
+## 🛠️ Troubleshooting
 
 <details>
-<summary><b>❌ "ViGEmBus Sürücüsü Eksik" uyarısı alıyorum</b></summary>
+<summary><b>❌ "ViGEmBus Sürücüsü Eksik" (ViGEmBus driver missing) warning</b></summary>
 
-PC uygulaması sanal Xbox 360 kolu oluşturabilmek için kernel seviyesinde **ViGEmBus** sürücüsüne ihtiyaç duyar. [ViGEmBus Releases](https://github.com/nefarius/ViGEmBus/releases) sayfasından güncel yükleyiciyi kurup PcReceiver'ı yeniden başlatın (uygulamadaki **ViGEmBus İndir** butonu doğrudan bu sayfayı açar).
+Windows requires the kernel-level **ViGEmBus** driver to emulate virtual Xbox 360 controllers. Download and install it from [ViGEmBus Releases](https://github.com/nefarius/ViGEmBus/releases), then restart `PcReceiver` (you can also click the **`ViGEmBus İndir`** button directly in the banner).
 
 </details>
 
 <details>
-<summary><b>🔌 "adb bulunamadı" hatası alıyorum (USB Modu)</b></summary>
+<summary><b>🔌 "adb bulunamadı" (adb not found) error in USB mode</b></summary>
 
-Android **Platform Tools** (`adb.exe`) sistem `PATH` değişkeninde tanımlı değilse `adb reverse` çalışmaz. Platform Tools'u indirip `PATH`'e ekleyin ya da alternatif olarak Wi-Fi modunda PC'nin yerel IP adresiyle bağlanın.
-
-</details>
-
-<details>
-<summary><b>🏠 PS / Home tuşuna basınca telefon ana ekrana dönüyor</b></summary>
-
-Bazı Android sürümlerinde sistem pencere yöneticisi (`PhoneWindowManager`) Home tuşunu uygulamaya hiç göndermeden yakalayabilir. Oynamaya başlamadan önce uygulamadaki **"Ekranı Sabitle (PS/Home Engelle)"** butonuna basın; sistem düzeyinde ekran sabitleme aktifken Home / Son Uygulamalar tuşları kilitlenir. *(Cihaz ayarlarında "Ekran sabitleme" özelliği kapalıysa önce Ayarlar → Güvenlik altından etkinleştirin.)*
+`adb.exe` from Android **Platform Tools** must be available in your system `PATH` for `adb reverse` to work. Add Platform Tools to `PATH`, or switch to Wi-Fi mode using your PC's local IPv4 address.
 
 </details>
 
 <details>
-<summary><b>🕹️ Uygulamayı alta alınca analog çubuklar çalışmayı durduruyor</b></summary>
+<summary><b>🏠 Pressing the PS / Home button exits to the Android home screen</b></summary>
 
-Bu Android işletim sisteminin güvenlik tasarımıdır: root olmadan `MotionEvent` (analog çubuk ve tetik) verileri arka plandaki uygulamalara iletilmez. Çözüm olarak **"Oyun Modu (Ekranı Karart)"** butonunu kullanın; uygulama ön planda kalarak tüm verileri aktarırken ekran siyah OLED modunda minimum güç tüketir.
+Some Android OEM builds intercept `KEYCODE_HOME` in `PhoneWindowManager` before delivering it to the foreground app. Tap **`Ekranı Sabitle (PS/Home Engelle)`** before playing to engage Android Screen Pinning and lock Home/Recents navigation at the OS level *(ensure Screen Pinning is enabled under Android Settings → Security if prompted)*.
 
 </details>
 
 <details>
-<summary><b>📶 Wi-Fi üzerinden bağlanamıyorum</b></summary>
+<summary><b>🕹️ Analog sticks stop updating when minimizing the app</b></summary>
 
-- Telefon ve PC'nin aynı ağda olduğundan (misafir Wi-Fi / AP izolasyonu kapalı olduğundan) emin olun.
-- Windows Güvenlik Duvarı'nda TCP `28555` portuna izin verildiğini kontrol edin.
-- Telefonda `127.0.0.1` yerine PcReceiver ekranında gördüğünüz `192.168.x.x` yerel IP adresini yazdığınızdan emin olun.
+Non-root Android restricts `MotionEvent` delivery to the focused foreground Activity by design. Tap **`Oyun Modu (Ekranı Karart)`** to dim the screen to `1%` with a black OLED overlay while keeping the Activity focused and analog inputs streaming.
+
+</details>
+
+<details>
+<summary><b>📶 Unable to connect over Wi-Fi</b></summary>
+
+- Confirm both devices are on the same subnet (client/AP isolation disabled on router).
+- Ensure Windows Firewall allows inbound TCP on port `28555`.
+- Make sure you entered the PC's local IPv4 address (`192.168.x.x`) instead of `127.0.0.1`.
 
 </details>
 
 ---
 
-## 📄 Lisans
+## 📄 License
 
-Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.
+This project is licensed under the [MIT License](LICENSE).

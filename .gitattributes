@@ -1,4 +1,4 @@
-# Varsayılan satır sonu yönetimi
+# Default line-ending handling
 * text=auto
 
 # C# / .NET / XAML / XML
@@ -11,15 +11,15 @@
 *.json   text
 *.md     text
 
-# Windows toplu iş dosyaları her zaman CRLF kalmalıdır
+# Keep Windows batch & PowerShell scripts as CRLF
 *.bat    text eol=crlf
 *.cmd    text eol=crlf
 *.ps1    text eol=crlf
 
-# Kabuk betikleri LF kalmalıdır
+# Keep shell scripts as LF
 *.sh     text eol=lf
 
-# İkili (binary) varlıklar
+# Binary assets
 *.png    binary
 *.jpg    binary
 *.jpeg   binary
